@@ -4,12 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Multipla OCR</title>
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { background: #0f172a; color: #f1f5f9; font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
 
-/* ── Layout ── */
 .screen { display: none; flex-direction: column; min-height: 100vh; padding: 20px 16px; }
 .screen.active { display: flex; }
 
@@ -17,86 +15,75 @@ h1 { font-size: 18px; font-weight: 900; color: #fff; }
 h1 span { color: #3b82f6; }
 .sub { font-size: 12px; color: #64748b; margin-top: 3px; margin-bottom: 24px; }
 
-/* ── FASE 1: Drop zone ── */
+/* ── API KEY ── */
+.key-box { background: #1e293b; border: 1px solid #334155; border-radius: 14px; padding: 16px; margin-bottom: 20px; }
+.key-box .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #64748b; margin-bottom: 8px; }
+.key-row { display: flex; gap: 8px; }
+.key-row input { flex: 1; background: #0f172a; border: 1px solid #334155; border-radius: 8px;
+                 color: #f1f5f9; font-size: 13px; padding: 9px 12px; outline: none; font-family: monospace; }
+.key-row input:focus { border-color: #3b82f6; }
+.btn-save-key { background: #3b82f6; color: #fff; border: none; border-radius: 8px;
+                padding: 9px 16px; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+.key-ok { font-size: 12px; color: #22c55e; margin-top: 6px; display: none; }
+
+/* ── DROP ZONE ── */
 #dropzone {
   flex: 1; border: 2px dashed #334155; border-radius: 20px;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 14px; cursor: pointer; transition: border-color .2s, background .2s;
-  padding: 40px 20px; text-align: center; min-height: 300px;
+  padding: 40px 20px; text-align: center; min-height: 260px;
 }
 #dropzone.drag-over { border-color: #3b82f6; background: rgba(59,130,246,.05); }
+#dropzone.disabled { opacity: .4; pointer-events: none; }
 #dropzone svg { opacity: .4; }
-#dropzone .dz-title { font-size: 16px; font-weight: 700; color: #94a3b8; }
-#dropzone .dz-sub { font-size: 13px; color: #475569; }
-#dropzone .dz-hint { font-size: 11px; color: #334155; margin-top: 4px; }
+.dz-title { font-size: 16px; font-weight: 700; color: #94a3b8; }
+.dz-sub   { font-size: 13px; color: #475569; }
+.dz-hint  { font-size: 11px; color: #334155; margin-top: 4px; }
 #file-input { display: none; }
 
-.btn-primary {
-  background: #3b82f6; color: #fff; border: none; border-radius: 10px;
-  padding: 12px 28px; font-size: 15px; font-weight: 700; cursor: pointer;
-  transition: background .15s;
-}
-.btn-primary:hover { background: #2563eb; }
-.btn-primary:active { opacity: .85; }
-
-/* ── FASE 2: OCR ── */
-#preview-img { width: 100%; max-height: 200px; object-fit: contain; border-radius: 12px;
+/* ── OCR ── */
+#preview-img { width: 100%; max-height: 220px; object-fit: contain; border-radius: 12px;
                border: 1px solid #334155; background: #1e293b; margin-bottom: 16px; }
-.progress-bar-wrap { background: #1e293b; border-radius: 99px; height: 8px; overflow: hidden; margin-bottom: 8px; }
-.progress-bar { height: 100%; background: linear-gradient(90deg, #3b82f6, #60a5fa); border-radius: 99px;
-                width: 0%; transition: width .3s; }
-#ocr-status { font-size: 13px; color: #64748b; margin-bottom: 20px; }
+.spinner { width: 40px; height: 40px; border: 3px solid #334155; border-top-color: #3b82f6;
+           border-radius: 50%; animation: spin .8s linear infinite; margin: 0 auto 16px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+#ocr-status { font-size: 14px; color: #94a3b8; text-align: center; margin-bottom: 8px; }
+#ocr-sub    { font-size: 12px; color: #475569; text-align: center; }
 
-.accordion { background: #1e293b; border: 1px solid #334155; border-radius: 10px; margin-bottom: 16px; }
-.accordion-hdr { padding: 12px 16px; font-size: 13px; font-weight: 700; color: #64748b;
-                 cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
-.accordion-body { padding: 12px 16px; font-size: 11px; color: #64748b; white-space: pre-wrap;
-                  font-family: monospace; border-top: 1px solid #334155; max-height: 180px;
-                  overflow-y: auto; display: none; }
-.accordion-body.open { display: block; }
-
-/* ── FASE 3: Revisione ── */
-.pick-card {
-  background: #1e293b; border: 1px solid #334155; border-radius: 12px;
-  padding: 14px; margin-bottom: 12px;
-}
-.pick-card .row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+/* ── REVISIONE ── */
+.pick-card { background: #1e293b; border: 1px solid #334155; border-radius: 12px;
+             padding: 14px; margin-bottom: 12px; }
+.pick-card .row { display: flex; gap: 8px; align-items: flex-end; margin-bottom: 8px; }
 .pick-card .row:last-child { margin-bottom: 0; }
-.pick-card input {
-  flex: 1; background: #253042; border: 1px solid #334155; border-radius: 8px;
-  color: #f1f5f9; font-size: 13px; padding: 8px 10px; outline: none;
-}
-.pick-card input:focus { border-color: #3b82f6; }
-.pick-card input.quota-input { max-width: 80px; flex: none; text-align: center;
-                               color: #f59e0b; font-weight: 800; }
-.pick-card .lbl { font-size: 10px; color: #64748b; text-transform: uppercase;
-                  letter-spacing: .8px; margin-bottom: 4px; }
+.field { flex: 1; }
+.field .lbl { font-size: 10px; color: #64748b; text-transform: uppercase; letter-spacing: .8px; margin-bottom: 4px; }
+.field input { width: 100%; background: #253042; border: 1px solid #334155; border-radius: 8px;
+               color: #f1f5f9; font-size: 13px; padding: 8px 10px; outline: none; }
+.field input:focus { border-color: #3b82f6; }
+.field input.quota-input { color: #f59e0b; font-weight: 800; text-align: center; }
 .btn-del { background: none; border: 1px solid #334155; border-radius: 8px;
-           color: #ef4444; font-size: 16px; cursor: pointer; padding: 6px 10px;
-           flex-shrink: 0; transition: background .15s; }
-.btn-del:hover { background: rgba(239,68,68,.1); }
+           color: #ef4444; font-size: 16px; cursor: pointer; padding: 6px 10px; }
 .btn-add { background: none; border: 1px dashed #334155; border-radius: 10px;
            color: #64748b; font-size: 13px; font-weight: 700; cursor: pointer;
            padding: 12px; width: 100%; margin-bottom: 20px; transition: border-color .15s; }
 .btn-add:hover { border-color: #3b82f6; color: #3b82f6; }
 
-.badge-count { display: inline-block; background: #3b82f6; color: #fff;
-               border-radius: 99px; padding: 2px 10px; font-size: 12px;
-               font-weight: 700; margin-left: 8px; }
+.btn-primary { background: #3b82f6; color: #fff; border: none; border-radius: 10px;
+               padding: 14px; font-size: 15px; font-weight: 700; cursor: pointer; width: 100%; }
+.btn-primary:active { opacity: .85; }
+.empty-msg { color: #64748b; font-size: 13px; text-align: center; padding: 20px 0; }
 
-/* ── FASE 4: Tracker ── */
-.pick-tracker {
-  background: #1e293b; border: 1px solid #334155; border-radius: 14px;
-  padding: 16px; margin-bottom: 14px; transition: border-color .2s, background .2s;
-}
+/* ── TRACKER ── */
+.pick-tracker { background: #1e293b; border: 1px solid #334155; border-radius: 14px;
+                padding: 16px; margin-bottom: 14px; transition: border-color .2s, background .2s; }
 .pick-tracker.win  { border-color: #22c55e; background: #052e16; }
 .pick-tracker.lose { border-color: #ef4444; background: #2d0808; }
-.pick-tracker .t-match { font-size: 15px; font-weight: 700; }
-.pick-tracker .t-meta  { font-size: 12px; color: #64748b; margin: 4px 0 12px; }
-.pill-mercato { display: inline-block; background: #253042; border: 1px solid #334155;
-                border-radius: 20px; padding: 3px 12px; font-size: 13px; font-weight: 700;
-                color: #3b82f6; margin-right: 6px; }
-.pill-quota   { font-size: 15px; font-weight: 800; color: #f59e0b; }
+.t-match { font-size: 15px; font-weight: 700; }
+.t-meta  { font-size: 12px; color: #64748b; margin: 4px 0 12px; }
+.pill-m { display: inline-block; background: #253042; border: 1px solid #334155;
+          border-radius: 20px; padding: 3px 12px; font-size: 13px; font-weight: 700;
+          color: #3b82f6; margin-right: 6px; }
+.pill-q { font-size: 15px; font-weight: 800; color: #f59e0b; }
 .t-btns { display: flex; gap: 8px; margin-top: 12px; }
 .btn-w { flex: 1; padding: 11px; background: #22c55e; color: #000; border: none;
          border-radius: 10px; font-size: 15px; font-weight: 800; cursor: pointer; }
@@ -104,22 +91,19 @@ h1 span { color: #3b82f6; }
          border-radius: 10px; font-size: 15px; font-weight: 800; cursor: pointer; }
 .btn-r { padding: 11px 14px; background: #334155; color: #94a3b8; border: none;
          border-radius: 10px; font-size: 14px; cursor: pointer; }
-.btn-w:active, .btn-l:active, .btn-r:active { opacity: .75; }
+.btn-w:active,.btn-l:active,.btn-r:active { opacity: .75; }
 .esito-badge { display: inline-block; margin-top: 8px; font-size: 16px; font-weight: 900;
                padding: 3px 14px; border-radius: 20px; }
 .esito-badge.win  { background: #052e16; color: #22c55e; border: 1px solid #22c55e; }
 .esito-badge.lose { background: #2d0808; color: #ef4444; border: 1px solid #ef4444; }
 
-.riepilogo {
-  background: #1e293b; border: 2px solid #334155; border-radius: 14px;
-  padding: 18px; text-align: center; margin-bottom: 20px;
-}
-.riepilogo .r-lbl { font-size: 10px; text-transform: uppercase; letter-spacing: 1px;
-                    color: #64748b; margin-bottom: 6px; }
-.riepilogo .r-qt  { font-size: 40px; font-weight: 900; color: #f59e0b; }
-.riepilogo .r-stato { font-size: 14px; font-weight: 700; margin-top: 6px; color: #3b82f6; }
-.riepilogo.vinta  { border-color: #22c55e; }
-.riepilogo.persa  { border-color: #ef4444; }
+.riepilogo { background: #1e293b; border: 2px solid #334155; border-radius: 14px;
+             padding: 18px; text-align: center; margin-bottom: 20px; }
+.r-lbl   { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #64748b; margin-bottom: 6px; }
+.r-qt    { font-size: 40px; font-weight: 900; color: #f59e0b; }
+.r-stato { font-size: 14px; font-weight: 700; margin-top: 6px; color: #3b82f6; }
+.riepilogo.vinta { border-color: #22c55e; }
+.riepilogo.persa { border-color: #ef4444; }
 
 .btn-back { background: #1e293b; border: 1px solid #334155; border-radius: 10px;
             color: #64748b; font-size: 13px; font-weight: 700; padding: 10px 20px;
@@ -129,13 +113,22 @@ h1 span { color: #3b82f6; }
 </head>
 <body>
 
-<!-- ══════════ FASE 1: INPUT ══════════ -->
+<!-- ══ S1: INPUT ══ -->
 <div id="s1" class="screen active">
   <h1>⚽ Multipla <span>OCR</span></h1>
   <div class="sub">Incolla o trascina uno screenshot dei pronostici</div>
 
+  <div class="key-box">
+    <div class="lbl">🔑 Gemini API Key</div>
+    <div class="key-row">
+      <input type="password" id="api-key-input" placeholder="AIza...">
+      <button class="btn-save-key" onclick="salvaKey()">Salva</button>
+    </div>
+    <div class="key-ok" id="key-ok">✓ Key salvata</div>
+  </div>
+
   <div id="dropzone" onclick="document.getElementById('file-input').click()">
-    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="1.5">
+    <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="1.5">
       <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/>
     </svg>
     <div class="dz-title">Trascina qui l'immagine</div>
@@ -145,301 +138,224 @@ h1 span { color: #3b82f6; }
   <input type="file" id="file-input" accept="image/*">
 </div>
 
-<!-- ══════════ FASE 2: OCR ══════════ -->
+<!-- ══ S2: ANALISI ══ -->
 <div id="s2" class="screen">
-  <h1>⚽ Lettura <span>OCR</span></h1>
-  <div class="sub">Analisi dell'immagine in corso…</div>
-
+  <h1>⚽ Analisi <span>Gemini</span></h1>
+  <div class="sub">Lettura pronostici in corso…</div>
   <img id="preview-img" alt="preview">
-
-  <div class="progress-bar-wrap"><div class="progress-bar" id="progress-bar"></div></div>
-  <div id="ocr-status">Avvio Tesseract…</div>
-
-  <div class="accordion">
-    <div class="accordion-hdr" onclick="toggleAccordion(this)">
-      Testo grezzo OCR <span>▸</span>
-    </div>
-    <div class="accordion-body" id="raw-text"></div>
-  </div>
+  <div class="spinner"></div>
+  <div id="ocr-status">Invio immagine a Gemini…</div>
+  <div id="ocr-sub">Di solito ci vogliono 3-5 secondi</div>
 </div>
 
-<!-- ══════════ FASE 3: REVISIONE ══════════ -->
+<!-- ══ S3: REVISIONE ══ -->
 <div id="s3" class="screen">
   <h1>⚽ Revisione <span>Pick</span></h1>
   <div class="sub">Controlla e correggi i pick estratti</div>
-
   <div id="picks-list"></div>
-  <button class="btn-add" onclick="addPick()">+ Aggiungi pick manuale</button>
-  <button class="btn-primary" style="width:100%" onclick="avviaTracker()">Avvia Tracker →</button>
+  <button class="btn-add" onclick="addPick()">+ Aggiungi pick</button>
+  <button class="btn-primary" onclick="avviaTracker()">Avvia Tracker →</button>
 </div>
 
-<!-- ══════════ FASE 4: TRACKER ══════════ -->
+<!-- ══ S4: TRACKER ══ -->
 <div id="s4" class="screen">
-  <h1 id="tracker-title">⚽ Multipla</h1>
+  <h1>⚽ <span id="tracker-title">Multipla</span></h1>
   <div class="sub" id="tracker-data"></div>
-
   <div id="tracker-picks"></div>
-
   <div class="riepilogo" id="riepilogo">
     <div class="r-lbl">Quota combinata</div>
     <div class="r-qt" id="r-qt">—</div>
     <div class="r-stato" id="r-stato">⏳ In corso</div>
   </div>
-
   <button class="btn-back" onclick="nuovaMultipla()">← Nuova multipla</button>
 </div>
 
 <script>
-// ─── Stato globale ───────────────────────────────────────────────
-let picks = [];   // [{match, mercato, quota}, ...]
-let stati = [];   // ["","win","lose", ...]
+let picks = [];
+let stati = [];
 
-// ─── Utility ────────────────────────────────────────────────────
-function show(id) {
+const show = id => {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   window.scrollTo(0, 0);
+};
+const esc = s => (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+
+// ── API Key ────────────────────────────────────────────────────
+function initKey() {
+  const saved = localStorage.getItem('gemini_api_key');
+  if (saved) {
+    document.getElementById('api-key-input').value = saved;
+    document.getElementById('key-ok').style.display = 'block';
+  } else {
+    document.getElementById('dropzone').classList.add('disabled');
+  }
 }
 
-function toggleAccordion(hdr) {
-  const body = hdr.nextElementSibling;
-  const open = body.classList.toggle('open');
-  hdr.querySelector('span').textContent = open ? '▾' : '▸';
+function salvaKey() {
+  const val = document.getElementById('api-key-input').value.trim();
+  if (!val) return;
+  localStorage.setItem('gemini_api_key', val);
+  document.getElementById('key-ok').style.display = 'block';
+  document.getElementById('dropzone').classList.remove('disabled');
 }
 
-// ─── FASE 1: Input ──────────────────────────────────────────────
+function getKey() { return localStorage.getItem('gemini_api_key') || ''; }
+
+// ── Input ──────────────────────────────────────────────────────
 const dropzone  = document.getElementById('dropzone');
 const fileInput = document.getElementById('file-input');
 
 dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag-over'); });
 dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag-over'));
 dropzone.addEventListener('drop', e => {
-  e.preventDefault();
-  dropzone.classList.remove('drag-over');
-  const file = e.dataTransfer.files[0];
-  if (file && file.type.startsWith('image/')) processImage(file);
+  e.preventDefault(); dropzone.classList.remove('drag-over');
+  const f = e.dataTransfer.files[0];
+  if (f && f.type.startsWith('image/')) processImage(f);
 });
-
-fileInput.addEventListener('change', () => {
-  if (fileInput.files[0]) processImage(fileInput.files[0]);
-});
-
+fileInput.addEventListener('change', () => { if (fileInput.files[0]) processImage(fileInput.files[0]); });
 document.addEventListener('paste', e => {
-  const items = [...e.clipboardData.items];
-  const img = items.find(i => i.type.startsWith('image/'));
+  const img = [...e.clipboardData.items].find(i => i.type.startsWith('image/'));
   if (img) processImage(img.getAsFile());
 });
 
-// ─── FASE 2: OCR ────────────────────────────────────────────────
+// ── Gemini Vision ──────────────────────────────────────────────
 async function processImage(file) {
+  if (!getKey()) { alert('Inserisci prima la Gemini API Key.'); return; }
   show('s2');
   const url = URL.createObjectURL(file);
   document.getElementById('preview-img').src = url;
-
-  const bar    = document.getElementById('progress-bar');
-  const status = document.getElementById('ocr-status');
+  document.getElementById('ocr-status').textContent = 'Lettura immagine…';
+  document.getElementById('ocr-sub').textContent = 'Di solito ci vogliono 3-5 secondi';
 
   try {
-    const result = await Tesseract.recognize(url, 'ita+eng', {
-      logger: m => {
-        if (m.status === 'recognizing text') {
-          const pct = Math.round(m.progress * 100);
-          bar.style.width = pct + '%';
-          status.textContent = `Riconoscimento testo… ${pct}%`;
-        } else {
-          status.textContent = m.status;
-        }
+    const b64  = await fileToBase64(file);
+    const mime = file.type || 'image/png';
+
+    document.getElementById('ocr-status').textContent = 'Analisi con Gemini Vision…';
+
+    const prompt = `Analizza questo screenshot di una schedina o multipla scommesse sportive.
+Estrai TUTTI i pick presenti. Per ogni pick restituisci:
+- match: "Squadra A - Squadra B"
+- mercato: tipo di scommessa (Over 2.5, GG, 1, 2, X, Under 2.5, Handicap, ecc.)
+- quota: numero decimale
+
+Rispondi SOLO con JSON valido, zero testo aggiuntivo:
+[{"match":"...","mercato":"...","quota":1.00}]
+
+Se non ci sono pick leggibili rispondi: []`;
+
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${getKey()}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [
+            { inline_data: { mime_type: mime, data: b64 } },
+            { text: prompt }
+          ]}],
+          generationConfig: { temperature: 0.1, maxOutputTokens: 1024 }
+        })
       }
-    });
+    );
 
-    const text = result.data.text;
-    document.getElementById('raw-text').textContent = text;
-    bar.style.width = '100%';
-    status.textContent = 'OCR completato ✓';
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err?.error?.message || 'Errore API ' + res.status);
+    }
 
-    picks = parsePicks(text);
-    setTimeout(() => { URL.revokeObjectURL(url); showRevisione(); }, 400);
+    const data = await res.json();
+    const raw  = data?.candidates?.[0]?.content?.parts?.[0]?.text || '[]';
+    const jsonMatch = raw.match(/\[[\s\S]*\]/);
+    picks = jsonMatch ? JSON.parse(jsonMatch[0]) : [];
+    picks = picks.map(p => ({ ...p, quota: parseFloat(String(p.quota).replace(',','.')) || 1.00 }));
+
+    URL.revokeObjectURL(url);
+    showRevisione();
 
   } catch (err) {
-    status.textContent = 'Errore OCR: ' + err.message;
-    bar.style.width = '0%';
+    document.getElementById('ocr-status').textContent = '⚠ ' + err.message;
+    document.getElementById('ocr-sub').textContent = 'Controlla la API key o la connessione.';
   }
 }
 
-// ─── Parser ─────────────────────────────────────────────────────
-function parsePicks(text) {
-  // Normalizza virgole decimali
-  const norm = text.replace(/(\d),(\d)/g, '$1.$2');
-  const lines = norm.split('\n').map(l => l.trim()).filter(l => l.length > 1);
-
-  const result = [];
-  const seen   = new Set();
-
-  // Pattern quota: numero tra 1.01 e 50.00, opzionalmente preceduto da @
-  const QUOTA_RE = /(?:@\s*)?(\b(?:[1-9][0-9]?)\.\d{1,2}\b)/g;
-
-  const MERCATI_RE = [
-    [/over\s*0[.,]5/i, 'Over 0.5'],
-    [/over\s*1[.,]5/i, 'Over 1.5'],
-    [/over\s*2[.,]5/i, 'Over 2.5'],
-    [/over\s*3[.,]5/i, 'Over 3.5'],
-    [/over\s*4[.,]5/i, 'Over 4.5'],
-    [/under\s*0[.,]5/i, 'Under 0.5'],
-    [/under\s*1[.,]5/i, 'Under 1.5'],
-    [/under\s*2[.,]5/i, 'Under 2.5'],
-    [/under\s*3[.,]5/i, 'Under 3.5'],
-    [/\bgg\b/i, 'GG'],
-    [/\bng\b/i, 'NG'],
-    [/\bboth\s*teams?\s*score/i, 'GG'],
-    [/segna\s*casa/i, 'SegnaCasa'],
-    [/segna\s*ospite/i, 'SegnaOspite'],
-    [/risultato\s*esatto/i, 'Risultato Esatto'],
-    [/exact\s*score/i, 'Risultato Esatto'],
-    [/handicap/i, 'Handicap'],
-    [/doppia\s*chance/i, 'Doppia Chance'],
-    [/\b1x\b/i, '1X'],
-    [/\bx2\b/i, 'X2'],
-    [/\b12\b/, '12'],
-    [/\bdraw\b/i, 'Pareggio (X)'],
-    [/\bpareggio\b/i, 'Pareggio (X)'],
-  ];
-
-  // Regex per trovare match tipo "Team A - Team B" o "Team A vs Team B"
-  const MATCH_RE = /([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ .]{1,25})\s*(?:[-–—]|vs\.?)\s*([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ .]{1,25})/;
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    const qtMatches = [...line.matchAll(QUOTA_RE)];
-
-    for (const qtm of qtMatches) {
-      const qt = parseFloat(qtm[1]);
-      if (qt < 1.01 || qt > 50.0) continue;
-
-      // Finestra di contesto: 2 righe prima e dopo
-      const ctx = lines.slice(Math.max(0, i - 2), i + 3).join(' ');
-
-      // Cerca match
-      let matchName = '';
-      const mFound = ctx.match(MATCH_RE);
-      if (mFound) {
-        matchName = mFound[1].trim() + ' - ' + mFound[2].trim();
-      } else {
-        matchName = line.replace(qtm[0], '').replace(/\s+/g, ' ').trim().substring(0, 50);
-      }
-
-      // Cerca mercato
-      let mercato = '';
-      for (const [re, label] of MERCATI_RE) {
-        if (re.test(ctx)) { mercato = label; break; }
-      }
-
-      const key = qt.toFixed(2) + '|' + matchName.toLowerCase().substring(0, 20);
-      if (!seen.has(key) && matchName.length > 2) {
-        seen.add(key);
-        result.push({ match: matchName, mercato, quota: qt });
-      }
-    }
-  }
-
-  // Fallback: nessun pick trovato → almeno restituisce riga con quote
-  if (result.length === 0) {
-    for (const line of lines) {
-      const qt = parseFloat(line.replace(',', '.'));
-      if (!isNaN(qt) && qt >= 1.01 && qt <= 50) {
-        result.push({ match: '', mercato: '', quota: qt });
-      }
-    }
-  }
-
-  return result;
+function fileToBase64(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload  = () => res(r.result.split(',')[1]);
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
 }
 
-// ─── FASE 3: Revisione ──────────────────────────────────────────
+// ── Revisione ──────────────────────────────────────────────────
 function showRevisione() {
   show('s3');
   renderPicks();
 }
 
 function renderPicks() {
-  const container = document.getElementById('picks-list');
-  if (picks.length === 0) {
-    container.innerHTML = '<p style="color:#64748b;font-size:13px;text-align:center;margin-bottom:20px">Nessun pick trovato automaticamente.<br>Aggiungili manualmente.</p>';
+  const c = document.getElementById('picks-list');
+  if (!picks.length) {
+    c.innerHTML = '<p class="empty-msg">Nessun pick trovato.<br>Aggiungili manualmente.</p>';
     return;
   }
-
-  container.innerHTML = picks.map((p, i) => `
-    <div class="pick-card" id="pc-${i}">
+  c.innerHTML = picks.map((p, i) => `
+    <div class="pick-card">
       <div class="row">
-        <div style="flex:1">
+        <div class="field">
           <div class="lbl">Match</div>
-          <input type="text" value="${escHtml(p.match)}" placeholder="Squadra A - Squadra B"
-                 onchange="picks[${i}].match = this.value">
+          <input type="text" value="${esc(p.match)}" placeholder="Squadra A - Squadra B"
+                 onchange="picks[${i}].match=this.value">
         </div>
-        <button class="btn-del" onclick="removePick(${i})">✕</button>
+        <button class="btn-del" onclick="removePick(${i})" style="align-self:flex-end">✕</button>
       </div>
       <div class="row">
-        <div style="flex:1">
+        <div class="field">
           <div class="lbl">Mercato</div>
-          <input type="text" value="${escHtml(p.mercato)}" placeholder="Over 2.5 / GG / ecc."
-                 onchange="picks[${i}].mercato = this.value">
+          <input type="text" value="${esc(p.mercato)}" placeholder="Over 2.5 / GG …"
+                 onchange="picks[${i}].mercato=this.value">
         </div>
-        <div>
+        <div class="field" style="max-width:88px">
           <div class="lbl">Quota</div>
-          <input type="number" class="quota-input" step="0.01" min="1" value="${p.quota.toFixed(2)}"
-                 onchange="picks[${i}].quota = parseFloat(this.value) || 1">
+          <input type="number" class="quota-input" step="0.01" min="1"
+                 value="${p.quota.toFixed(2)}" onchange="picks[${i}].quota=parseFloat(this.value)||1">
         </div>
       </div>
-    </div>
-  `).join('');
+    </div>`).join('');
 }
 
 function addPick() {
   picks.push({ match: '', mercato: '', quota: 1.00 });
   renderPicks();
-  // Focus sul primo input dell'ultimo pick
-  setTimeout(() => {
-    const inputs = document.querySelectorAll('.pick-card:last-child input');
-    if (inputs[0]) inputs[0].focus();
-  }, 50);
+  setTimeout(() => document.querySelector('.pick-card:last-child input')?.focus(), 50);
 }
+function removePick(i) { picks.splice(i, 1); renderPicks(); }
 
-function removePick(i) {
-  picks.splice(i, 1);
-  renderPicks();
-}
-
-function escHtml(s) {
-  return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
-}
-
-// ─── FASE 4: Tracker ─────────────────────────────────────────────
+// ── Tracker ────────────────────────────────────────────────────
 function avviaTracker() {
-  if (picks.length === 0) { alert('Aggiungi almeno un pick.'); return; }
-
-  // Sincronizza valori dagli input nel DOM
+  if (!picks.length) { alert('Aggiungi almeno un pick.'); return; }
   document.querySelectorAll('.pick-card').forEach((card, i) => {
-    const inputs = card.querySelectorAll('input');
-    picks[i].match   = inputs[0].value;
-    picks[i].mercato = inputs[1].value;
-    picks[i].quota   = parseFloat(inputs[2].value) || 1;
+    const inp = card.querySelectorAll('input');
+    picks[i].match   = inp[0].value;
+    picks[i].mercato = inp[1].value;
+    picks[i].quota   = parseFloat(inp[2].value) || 1;
   });
-
   stati = picks.map(() => '');
-  const oggi = new Date().toLocaleDateString('it-IT');
-  document.getElementById('tracker-data').textContent = oggi + ' · ' + picks.length + ' pick';
-
+  document.getElementById('tracker-data').textContent =
+    new Date().toLocaleDateString('it-IT') + ' · ' + picks.length + ' pick';
   renderTracker();
   show('s4');
 }
 
 function renderTracker() {
-  const container = document.getElementById('tracker-picks');
-  container.innerHTML = picks.map((p, i) => `
+  document.getElementById('tracker-picks').innerHTML = picks.map((p, i) => `
     <div class="pick-tracker ${stati[i]}" id="pt-${i}">
-      <div class="t-match">${escHtml(p.match) || '—'}</div>
+      <div class="t-match">${esc(p.match) || '—'}</div>
       <div class="t-meta">
-        <span class="pill-mercato">${escHtml(p.mercato) || '—'}</span>
-        <span class="pill-quota">@${p.quota.toFixed(2)}</span>
+        <span class="pill-m">${esc(p.mercato) || '—'}</span>
+        <span class="pill-q">@${p.quota.toFixed(2)}</span>
       </div>
       <div id="badge-${i}"></div>
       <div class="t-btns">
@@ -447,25 +363,16 @@ function renderTracker() {
         <button class="btn-l" onclick="segnaPick(${i},'lose')">✗ LOSE</button>
         <button class="btn-r" onclick="segnaPick(${i},'')">↺</button>
       </div>
-    </div>
-  `).join('');
-
+    </div>`).join('');
   aggiornaRiepilogo();
 }
 
 function segnaPick(i, esito) {
   stati[i] = esito;
-
-  // Aggiorna card
-  const card  = document.getElementById('pt-' + i);
-  const badge = document.getElementById('badge-' + i);
-  card.className = 'pick-tracker ' + esito;
-  badge.innerHTML = esito === 'win'
-    ? '<span class="esito-badge win">✓ WIN</span>'
-    : esito === 'lose'
-    ? '<span class="esito-badge lose">✗ LOSE</span>'
-    : '';
-
+  document.getElementById('pt-' + i).className = 'pick-tracker ' + esito;
+  document.getElementById('badge-' + i).innerHTML =
+    esito === 'win'  ? '<span class="esito-badge win">✓ WIN</span>'  :
+    esito === 'lose' ? '<span class="esito-badge lose">✗ LOSE</span>' : '';
   aggiornaRiepilogo();
 }
 
@@ -473,39 +380,30 @@ function aggiornaRiepilogo() {
   const riq  = document.getElementById('riepilogo');
   const qtEl = document.getElementById('r-qt');
   const stEl = document.getElementById('r-stato');
-  const quoteTotale = picks.reduce((acc, p) => acc * p.quota, 1);
+  const qtTot = picks.reduce((a, p) => a * p.quota, 1).toFixed(2);
+  qtEl.textContent = qtTot;
 
   if (stati.includes('lose')) {
-    qtEl.textContent  = quoteTotale.toFixed(2);
-    qtEl.style.color  = '#ef4444';
-    stEl.textContent  = '✗ PERSA';
-    stEl.style.color  = '#ef4444';
-    riq.className     = 'riepilogo persa';
+    qtEl.style.color = '#ef4444'; stEl.style.color = '#ef4444';
+    stEl.textContent = '✗ PERSA'; riq.className = 'riepilogo persa';
   } else if (stati.every(s => s === 'win')) {
-    qtEl.textContent  = quoteTotale.toFixed(2);
-    qtEl.style.color  = '#22c55e';
-    stEl.textContent  = '✓ VINTA @' + quoteTotale.toFixed(2);
-    stEl.style.color  = '#22c55e';
-    riq.className     = 'riepilogo vinta';
+    qtEl.style.color = '#22c55e'; stEl.style.color = '#22c55e';
+    stEl.textContent = '✓ VINTA @' + qtTot; riq.className = 'riepilogo vinta';
   } else {
-    const pendenti = picks.filter((_, i) => stati[i] !== 'win').map(p => p.quota);
-    const qtPend   = pendenti.reduce((a, b) => a * b, 1);
-    qtEl.textContent  = quoteTotale.toFixed(2);
-    qtEl.style.color  = '#f59e0b';
-    stEl.textContent  = '⏳ In corso — ' + pendenti.length + ' da giocare';
-    stEl.style.color  = '#3b82f6';
-    riq.className     = 'riepilogo';
+    const pend = stati.filter(s => s !== 'win').length;
+    qtEl.style.color = '#f59e0b'; stEl.style.color = '#3b82f6';
+    stEl.textContent = '⏳ In corso — ' + pend + ' da giocare';
+    riq.className = 'riepilogo';
   }
 }
 
 function nuovaMultipla() {
-  picks = [];
-  stati = [];
-  document.getElementById('file-input').value = '';
-  document.getElementById('raw-text').textContent = '';
-  document.getElementById('progress-bar').style.width = '0%';
+  picks = []; stati = [];
+  fileInput.value = '';
   show('s1');
 }
+
+initKey();
 </script>
 </body>
 </html>
