@@ -245,25 +245,34 @@ Rispondi SOLO con JSON valido, zero testo aggiuntivo:
 
 Se non ci sono pick leggibili rispondi: []`;
 
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${getKey()}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [
-            { inline_data: { mime_type: mime, data: b64 } },
-            { text: prompt }
-          ]}],
-          generationConfig: { temperature: 0.1, maxOutputTokens: 1024 }
-        })
+    const MODELS = ['gemini-1.5-flash', 'gemini-2.0-flash'];
+    let res, lastErr;
+    for (const model of MODELS) {
+      document.getElementById('ocr-status').textContent = `Analisi con ${model}…`;
+      res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${getKey()}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [
+              { inline_data: { mime_type: mime, data: b64 } },
+              { text: prompt }
+            ]}],
+            generationConfig: { temperature: 0.1, maxOutputTokens: 1024 }
+          })
+        }
+      );
+      if (res.ok) break;
+      const errBody = await res.json().catch(() => ({}));
+      lastErr = errBody?.error?.message || 'Errore API ' + res.status;
+      // Se rate limit aspetta 25s e riprova col modello successivo
+      if (res.status === 429) {
+        document.getElementById('ocr-status').textContent = `Rate limit su ${model}, cambio modello…`;
+        await new Promise(r => setTimeout(r, 3000));
       }
-    );
-
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err?.error?.message || 'Errore API ' + res.status);
     }
+    if (!res.ok) throw new Error(lastErr);
 
     const data = await res.json();
     const raw  = data?.candidates?.[0]?.content?.parts?.[0]?.text || '[]';
